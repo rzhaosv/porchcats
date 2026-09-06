@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Alert, Linking, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { PurchasesPackage } from 'react-native-purchases';
+import type { PurchasesPackage, PurchasesStoreProduct } from 'react-native-purchases';
 import { colors, radius, type } from '../theme';
 import { PrimaryButton, Label, Tag } from '../components/UI';
 import { Cat } from '../components/Cat';
-import { getPackages, purchase, restore, isCancelledError, isSubscription, isAnnual, goldFor } from '../services/billing';
+import { getPackages, getGoldProducts, purchase, purchaseGold, restore, isCancelledError, isSubscription, isAnnual, goldForId } from '../services/billing';
 import { useApp } from '../store/AppContext';
 import { ScreenProps } from '../navigation';
 import { GOLD_PACKS } from '../content/items';
@@ -29,6 +29,7 @@ const REASON: Record<string, string> = {
 export default function ClubScreen({ navigation, route }: ScreenProps<'Club'>) {
   const { state, club, setClub, creditGold } = useApp();
   const [pkgs, setPkgs] = useState<PurchasesPackage[]>([]);
+  const [golds, setGolds] = useState<PurchasesStoreProduct[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -42,6 +43,7 @@ export default function ClubScreen({ navigation, route }: ScreenProps<'Club'>) {
       setSelected((annual ?? p.find(isSubscription))?.identifier ?? null);
       setLoaded(true);
     });
+    getGoldProducts().then(setGolds);
   }, []);
 
   const close = () => (navigation.canGoBack() ? navigation.goBack() : navigation.replace('Tabs'));
@@ -50,14 +52,24 @@ export default function ClubScreen({ navigation, route }: ScreenProps<'Club'>) {
     setBusy(true);
     try {
       const r = await purchase(pkg);
-      const fish = goldFor(pkg);
-      if (fish > 0) {
-        creditGold(fish, r.txId);
-        Alert.alert(`+${fish} gold fish`, 'Added to your porch. Thank you.');
-      } else if (r.club) {
+      if (r.club) {
         setClub(true);
         close();
       }
+    } catch (e) {
+      if (!isCancelledError(e)) Alert.alert('Purchase failed', 'Something went wrong. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const buyGold = async (product: PurchasesStoreProduct) => {
+    setBusy(true);
+    try {
+      const r = await purchaseGold(product);
+      const fish = goldForId(product.identifier);
+      creditGold(fish, r.txId);
+      Alert.alert(`+${fish} gold fish`, 'Added to your porch. Thank you.');
     } catch (e) {
       if (!isCancelledError(e)) Alert.alert('Purchase failed', 'Something went wrong. Please try again.');
     } finally {
@@ -87,7 +99,6 @@ export default function ClubScreen({ navigation, route }: ScreenProps<'Club'>) {
   };
 
   const subs = pkgs.filter(isSubscription).sort((a, b) => (isAnnual(a) ? -1 : isAnnual(b) ? 1 : 0));
-  const golds = pkgs.filter((p) => goldFor(p) > 0).sort((a, b) => goldFor(a) - goldFor(b));
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -95,7 +106,6 @@ export default function ClubScreen({ navigation, route }: ScreenProps<'Club'>) {
         <Text style={{ color: colors.inkSoft, fontSize: 16, fontWeight: '600' }}>{fromOnboarding ? 'Skip' : '✕'}</Text>
       </Pressable>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {(reason === 'gold' || reason === 'food') && golds.length > 0 ? null : null}
         <View style={{ alignItems: 'center' }}>
           <View style={styles.stage}>
             <Cat pattern="tuxedo" pose="sit" size={130} />
@@ -150,17 +160,17 @@ export default function ClubScreen({ navigation, route }: ScreenProps<'Club'>) {
           <Tag text={`You have ${state.gold}`} tone="gold" />
         </View>
         <View style={{ gap: 10 }}>
-          {(golds.length ? golds : []).map((p) => {
-            const fish = goldFor(p);
+          {golds.map((p) => {
+            const fish = goldForId(p.identifier);
             const meta = GOLD_PACKS.find((g) => g.fish === fish);
             return (
-              <Pressable key={p.identifier} onPress={() => buy(p)} disabled={busy} style={styles.pack}>
+              <Pressable key={p.identifier} onPress={() => buyGold(p)} disabled={busy} style={styles.pack}>
                 <Text style={{ fontSize: 26 }}>🐠</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={type.h3}>{fish} gold fish</Text>
                   <Text style={type.caption}>{meta?.label ?? ''}</Text>
                 </View>
-                <Text style={[type.numSm, { fontSize: 16 }]}>{p.product.priceString}</Text>
+                <Text style={[type.numSm, { fontSize: 16 }]}>{p.priceString}</Text>
               </Pressable>
             );
           })}

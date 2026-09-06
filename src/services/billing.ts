@@ -1,4 +1,4 @@
-import Purchases, { CustomerInfo, PurchasesPackage, LOG_LEVEL } from 'react-native-purchases';
+import Purchases, { CustomerInfo, PurchasesPackage, PurchasesStoreProduct, LOG_LEVEL } from 'react-native-purchases';
 import { Platform } from 'react-native';
 import { demo } from '../dev/demo';
 import { GOLD_PACKS } from '../content/items';
@@ -43,8 +43,28 @@ export function addClubListener(cb: (club: boolean) => void): () => void {
 const DEMO_PACKAGES = [
   { identifier: '$rc_annual', packageType: 'ANNUAL', product: { identifier: 'com.formaz.porchcats.club.yearly', priceString: '$24.99/yr' } },
   { identifier: '$rc_monthly', packageType: 'MONTHLY', product: { identifier: 'com.formaz.porchcats.club.monthly', priceString: '$3.99/mo' } },
-  ...GOLD_PACKS.map((g) => ({ identifier: g.id.split('.').pop(), packageType: 'CUSTOM', product: { identifier: g.id, priceString: g.price } })),
 ] as unknown as PurchasesPackage[];
+const DEMO_PRODUCTS = GOLD_PACKS.map((g) => ({ identifier: g.id, priceString: g.price })) as unknown as PurchasesStoreProduct[];
+
+/** Gold fish packs are fetched as store products directly (no offering package needed). */
+export async function getGoldProducts(): Promise<PurchasesStoreProduct[]> {
+  if (demo) return DEMO_PRODUCTS;
+  if (!configured) return [];
+  try {
+    const list = await Purchases.getProducts(GOLD_PACKS.map((g) => g.id));
+    return [...list].sort((a, b) => goldForId(a.identifier) - goldForId(b.identifier));
+  } catch {
+    return [];
+  }
+}
+
+export const goldForId = (id: string) => GOLD_PACKS.find((g) => g.id === id)?.fish ?? 0;
+
+export async function purchaseGold(product: PurchasesStoreProduct): Promise<PurchaseResult> {
+  const res = await Purchases.purchaseStoreProduct(product);
+  const txId = (res as any).transaction?.transactionIdentifier ?? `${product.identifier}:${Date.now()}`;
+  return { club: isClub(res.customerInfo), productId: product.identifier, txId };
+}
 
 export async function getPackages(): Promise<PurchasesPackage[]> {
   if (demo) return DEMO_PACKAGES;
