@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "Porch Cats",
+    "slug": "porchcats",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "porchcats",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FFF6E9",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.formaz.porchcats",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSUserNotificationsUsageDescription": "Porch Cats can tell you when a bowl runs empty or a rare cat drops by. Reminders are scheduled on your phone; nothing is sent anywhere.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.formaz.porchcats",
+      "adaptiveIcon": {
+        "backgroundColor": "#2B1D14",
+        "foregroundImage": "./assets/adaptive-icon.png"
+      }
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFF6E9"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#E58A3C",
+          "defaultChannel": "porch"
+        }
+      ]
+    ],
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "owner": "raymondzhao3000",
+    "extra": {
+      "eas": {
+        "projectId": "10a37718-1c9c-495e-9c57-3bbc12705e28"
+      }
+    }
+  }
+}
