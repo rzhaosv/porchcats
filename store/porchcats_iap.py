@@ -14,7 +14,7 @@ def ok(r, what):
 existing={x['attributes']['productId']:x for x in asc.api('GET',f'/v1/apps/{APP}/inAppPurchasesV2?limit=200')['data']}
 terr=[t['id'] for t in asc.api('GET','/v1/territories?limit=200')['data']]
 for pid,name,price,desc in PACKS:
-    iap=existing.get(pid) or ok(asc.api('POST','/v1/inAppPurchases',{'data':{'type':'inAppPurchases','attributes':{'name':name,'productId':pid,'inAppPurchaseType':'CONSUMABLE','reviewNote':'Consumable gold fish, the premium currency. Credited to the player on purchase; used for premium food and items in the Shop.'},'relationships':{'app':{'data':{'type':'apps','id':APP}}}}}),'create '+pid)
+    iap=existing.get(pid) or ok(asc.api('POST','/v2/inAppPurchases',{'data':{'type':'inAppPurchases','attributes':{'name':name,'productId':pid,'inAppPurchaseType':'CONSUMABLE','reviewNote':'Consumable gold fish, the premium currency. Credited to the player on purchase; used for premium food and items in the Shop.'},'relationships':{'app':{'data':{'type':'apps','id':APP}}}}}),'create '+pid)
     if not iap: continue
     IID=iap['id']; print('iap', pid, IID, iap['attributes'].get('state'))
     if not asc.api('GET',f'/v1/inAppPurchasesV2/{IID}/inAppPurchaseLocalizations').get('data'):
@@ -24,7 +24,7 @@ for pid,name,price,desc in PACKS:
         ok(asc.api('POST','/v1/inAppPurchaseAvailabilities',{'data':{'type':'inAppPurchaseAvailabilities','attributes':{'availableInNewTerritories':True},'relationships':{'inAppPurchase':{'data':{'type':'inAppPurchases','id':IID}},'availableTerritories':{'data':[{'type':'territories','id':t} for t in terr]}}}}),'availability')
     sched=asc.api('GET',f'/v1/inAppPurchasesV2/{IID}/iapPriceSchedule')
     if 'data' not in sched or not sched['data']:
-        pts=[]; url=f'/v1/inAppPurchasesV2/{IID}/pricePoints?filter[territory]=USA&limit=200&fields[inAppPurchasePricePoints]=customerPrice'
+        pts=[]; url=f'/v2/inAppPurchases/{IID}/pricePoints?filter[territory]=USA&limit=200&fields[inAppPurchasePricePoints]=customerPrice'
         while url:
             r=asc.api('GET',url); pts+=r.get('data',[]); url=r.get('links',{}).get('next'); url=url.replace('https://api.appstoreconnect.apple.com','') if url else None
         pt=next((p for p in pts if abs(float(p['attributes']['customerPrice'])-price)<0.001),None)
